@@ -1,0 +1,50 @@
+/* ── Reset ───────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── CSS Variables ───────────────────────────────────── */
+:root {
+  --bg:           #ede8df;
+  --bg-panel:     #f7f3ed;
+  --bg-toolbar:   #2c2c2c;
+  --text:         #1a1714;
+  --text-muted:   #5a514d;
+  --text-toolbar: #f5f0e8;
+  --border:       #ccc4b0;
+  --accent:       #c0392b;
+  --accent-hover: #a93226;
+  --success:      #27ae60;
+  --error:        #c0392b;
+  --mono:         ui-monospace, 'Cascadia Code', Consolas, 'Courier New', monospace;
+  --sans:         system-ui, 'Segoe UI', Roboto, sans-serif;
+  --radius:       6px;
+  --toolbar-h:    52px;
+  --statusbar-h:  36px;
+}
+
+[data-theme='dark'] {
+  --bg:           #1a1a2e;
+  --bg-panel:     #16213e;
+  --bg-toolbar:   #0f0f23;
+  --text:         #e8e8e8;
+  --text-muted:   #8888aa;
+  --text-toolbar: #e8e8e8;
+  --border:       #2a2a4a;
+  --accent:       #e74c3c;
+  --accent-hover: #c0392b;
+  --success:      #2ecc71;
+  --error:        #e74c3c;
+}
+
+/* ── Base ────────────────────────────────────────────── */
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
