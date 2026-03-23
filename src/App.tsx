@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import Toolbar, { type Action } from './components/Toolbar';
 import Editor from './components/Editor';
 import StatusBar from './components/StatusBar';
@@ -172,6 +173,7 @@ export default function App() {
         line={statusLine}
         col={statusCol}
       />
+      <Analytics />
     </div>
   );
 }
