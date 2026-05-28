@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Toolbar, { type Action } from './components/Toolbar';
 import Editor from './components/Editor';
+import CodeView from './components/CodeView';
 import StatusBar from './components/StatusBar';
 import { beautifyJS, minifyJS } from './lib/jsBeautifier';
 import { convertJSToJSON } from './lib/jsToJson';
@@ -149,10 +150,9 @@ export default function App() {
 
         <div className="panel-divider" />
 
-        <Editor
+        <CodeView
           label="Output"
           value={output}
-          readOnly
           placeholder="Output will appear here…"
           action={
             <button

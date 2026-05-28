@@ -188,6 +188,31 @@
   background: #111827;
 }
 
+/* ── Output Code View (CodeMirror) ───────────────────── */
+.codeview-body {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.codeview-body > div {
+  height: 100%;
+}
+
+.codeview-body,
+.codeview-body .cm-editor {
+  background: color-mix(in srgb, var(--bg) 70%, var(--bg-panel));
+}
+
+.codeview-body .cm-editor {
+  height: 100%;
+}
+
+[data-theme='dark'] .codeview-body,
+[data-theme='dark'] .codeview-body .cm-editor {
+  background: #111827;
+}
+
 /* ── Copy Button ─────────────────────────────────────── */
 .copy-btn {
   background: transparent;
