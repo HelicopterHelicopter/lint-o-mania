@@ -158,58 +158,34 @@
   align-items: center;
 }
 
-.editor-textarea {
-  flex: 1;
-  width: 100%;
-  padding: 16px;
-  background: var(--bg-panel);
-  color: var(--text);
-  font-family: var(--mono);
-  font-size: 13.5px;
-  line-height: 1.65;
-  border: none;
-  outline: none;
-  resize: none;
-  overflow: auto;
-  tab-size: 4;
-}
-
-.editor-textarea::placeholder {
-  color: var(--text-muted);
-  opacity: 0.6;
-}
-
-.editor-textarea[readonly] {
-  cursor: default;
-  background: color-mix(in srgb, var(--bg) 70%, var(--bg-panel));
-}
-
-[data-theme='dark'] .editor-textarea[readonly] {
-  background: #111827;
-}
-
-/* ── Output Code View (CodeMirror) ───────────────────── */
-.codeview-body {
+/* ── Editor body (CodeMirror, both panels) ───────────── */
+.editor-cm {
   flex: 1;
   min-height: 0;
   overflow: hidden;
 }
 
-.codeview-body > div {
+.editor-cm > div {
   height: 100%;
 }
 
-.codeview-body,
-.codeview-body .cm-editor {
+.editor-cm,
+.editor-cm .cm-editor {
+  background: var(--bg-panel);
+}
+
+.editor-cm .cm-editor {
+  height: 100%;
+}
+
+/* Read-only Output panel gets the muted background. */
+.editor-panel-readonly .editor-cm,
+.editor-panel-readonly .editor-cm .cm-editor {
   background: color-mix(in srgb, var(--bg) 70%, var(--bg-panel));
 }
 
-.codeview-body .cm-editor {
-  height: 100%;
-}
-
-[data-theme='dark'] .codeview-body,
-[data-theme='dark'] .codeview-body .cm-editor {
+[data-theme='dark'] .editor-panel-readonly .editor-cm,
+[data-theme='dark'] .editor-panel-readonly .editor-cm .cm-editor {
   background: #111827;
 }
 

@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { EditorView } from '@codemirror/view';
+import { openSearchPanel } from '@codemirror/search';
 import Toolbar, { type Action } from './components/Toolbar';
-import Editor from './components/Editor';
-import CodeView from './components/CodeView';
+import CodeEditor from './components/CodeEditor';
 import StatusBar from './components/StatusBar';
 import { beautifyJS, minifyJS } from './lib/jsBeautifier';
 import { convertJSToJSON } from './lib/jsToJson';
@@ -27,11 +28,32 @@ export default function App() {
   const [statusLine, setStatusLine] = useState<number | undefined>();
   const [statusCol, setStatusCol] = useState<number | undefined>();
   const [copied, setCopied] = useState(false);
+  const inputViewRef = useRef<EditorView | null>(null);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
     try { localStorage.setItem(STORAGE_DARK, String(darkMode)); } catch { /* noop */ }
   }, [darkMode]);
+
+  // Route Ctrl/Cmd+F to an editor's scoped search instead of the browser's
+  // page find. When an editor is focused, CodeMirror's own searchKeymap handles
+  // the shortcut (and prevents the browser default). When neither editor has
+  // focus, fall back to opening the Input editor's search panel.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const isFind = (e.metaKey || e.ctrlKey) && !e.altKey && (e.key === 'f' || e.key === 'F');
+      if (!isFind) return;
+      const active = document.activeElement;
+      if (active && active.closest('.cm-editor')) return; // an editor is focused — let CodeMirror handle it
+      const view = inputViewRef.current;
+      if (!view) return;
+      e.preventDefault();
+      view.focus();
+      openSearchPanel(view);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
 
   const clearStatus = () => {
     setStatus('idle');
@@ -141,16 +163,18 @@ export default function App() {
       />
 
       <main className="panels">
-        <Editor
+        <CodeEditor
           label="Input"
+          editable
           value={input}
           onChange={val => { setInput(val); clearStatus(); }}
+          onCreateEditor={view => { inputViewRef.current = view; }}
           placeholder={`Paste your JS object or JSON here…\n\n// Example JS object:\n{\n    ok: 200,\n    bad_request: 400,  // HTTP status\n    unauthorised: 401,\n    internal_server_error: 500\n}`}
         />
 
         <div className="panel-divider" />
 
-        <CodeView
+        <CodeEditor
           label="Output"
           value={output}
           placeholder="Output will appear here…"
