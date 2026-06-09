@@ -112,6 +112,101 @@
   background: rgba(255,255,255,0.1);
 }
 
+/* ── Tab Bar ─────────────────────────────────────────── */
+.tab-bar {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  height: var(--tabbar-h);
+  padding: 0 8px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 220px;
+  padding: 0 8px 0 12px;
+  margin-top: 5px;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: var(--radius) var(--radius) 0 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--sans);
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+  transition: background 0.15s, color 0.15s;
+}
+
+.tab:hover {
+  background: color-mix(in srgb, var(--bg-panel) 60%, transparent);
+  color: var(--text);
+}
+
+.tab.active {
+  background: var(--bg-panel);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.tab-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tab-rename {
+  background: var(--bg);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 13px;
+  padding: 1px 4px;
+  width: 120px;
+  outline: none;
+}
+
+.tab-close,
+.tab-new {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 16px;
+  line-height: 1;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+}
+
+.tab-close:hover {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent);
+}
+
+.tab-new {
+  align-self: center;
+  margin-left: 4px;
+}
+
+.tab-new:hover {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent);
+}
+
 /* ── Panels ──────────────────────────────────────────── */
 .panels {
   display: flex;

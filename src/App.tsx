@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { EditorView } from '@codemirror/view';
 import { openSearchPanel } from '@codemirror/search';
 import Toolbar, { type Action } from './components/Toolbar';
+import TabBar from './components/TabBar';
 import CodeEditor from './components/CodeEditor';
 import StatusBar from './components/StatusBar';
 import { beautifyJS, minifyJS } from './lib/jsBeautifier';
@@ -13,9 +14,33 @@ const STORAGE_DARK = 'jslint-dark';
 
 type Status = 'idle' | 'valid' | 'error';
 
+interface TabState {
+  id: string;
+  title: string;
+  input: string;
+  output: string;
+  status: Status;
+  statusMsg?: string;
+  statusLine?: number;
+  statusCol?: number;
+}
+
+const makeTab = (n: number): TabState => ({
+  id: `tab-${n}`,
+  title: `JSON ${n}`,
+  input: '',
+  output: '',
+  status: 'idle',
+});
+
+// Resets the status fields back to idle; spread into a patch alongside any
+// new output so a single update both clears the old status and sets the new.
+const CLEARED = { status: 'idle' as Status, statusMsg: undefined, statusLine: undefined, statusCol: undefined };
+
 export default function App() {
-  const [input, setInput] = useState('');
-  const [output, setOutput] = useState('');
+  const [tabs, setTabs] = useState<TabState[]>(() => [makeTab(1)]);
+  const [activeId, setActiveId] = useState('tab-1');
+  const nextNum = useRef(2); // monotonic counter so titles/ids stay unique
   const [indent, setIndent] = useState(4);
   const [darkMode, setDarkMode] = useState(() => {
     try {
@@ -23,12 +48,14 @@ export default function App() {
       return stored === null ? true : stored === 'true';
     } catch { return true; }
   });
-  const [status, setStatus] = useState<Status>('idle');
-  const [statusMsg, setStatusMsg] = useState<string | undefined>();
-  const [statusLine, setStatusLine] = useState<number | undefined>();
-  const [statusCol, setStatusCol] = useState<number | undefined>();
   const [copied, setCopied] = useState(false);
   const inputViewRef = useRef<EditorView | null>(null);
+
+  const activeTab = tabs.find(t => t.id === activeId) ?? tabs[0];
+
+  const patchActive = useCallback((patch: Partial<TabState>) => {
+    setTabs(ts => ts.map(t => (t.id === activeId ? { ...t, ...patch } : t)));
+  }, [activeId]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
@@ -55,50 +82,24 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
-  const clearStatus = () => {
-    setStatus('idle');
-    setStatusMsg(undefined);
-    setStatusLine(undefined);
-    setStatusCol(undefined);
-  };
-
-  const setError = (msg: string, line?: number, col?: number) => {
-    setStatus('error');
-    setStatusMsg(msg);
-    setStatusLine(line);
-    setStatusCol(col);
-  };
-
-  const setValid = () => {
-    setStatus('valid');
-    setStatusMsg(undefined);
-    setStatusLine(undefined);
-    setStatusCol(undefined);
-  };
-
   const handleAction = useCallback((action: Action) => {
-    clearStatus();
+    const input = activeTab.input;
+    let patch: Partial<TabState>;
 
     switch (action) {
       case 'beautify-js': {
         const result = beautifyJS(input, indent);
-        if (result.error) {
-          setOutput('');
-          setError(result.error);
-        } else {
-          setOutput(result.output);
-        }
+        patch = result.error
+          ? { ...CLEARED, output: '', status: 'error', statusMsg: result.error }
+          : { ...CLEARED, output: result.output };
         break;
       }
 
       case 'js-to-json': {
         const result = convertJSToJSON(input, indent);
-        if (result.error) {
-          setOutput('');
-          setError(result.error);
-        } else {
-          setOutput(result.output);
-        }
+        patch = result.error
+          ? { ...CLEARED, output: '', status: 'error', statusMsg: result.error }
+          : { ...CLEARED, output: result.output };
         break;
       }
 
@@ -106,11 +107,16 @@ export default function App() {
         const lint = lintJSON(input);
         if (lint.valid) {
           const pretty = beautifyJSON(input, indent);
-          setOutput(pretty.output);
-          setValid();
+          patch = { ...CLEARED, output: pretty.output, status: 'valid' };
         } else {
-          setOutput(input);
-          setError(lint.error!.message, lint.error!.line, lint.error!.col);
+          patch = {
+            ...CLEARED,
+            output: input,
+            status: 'error',
+            statusMsg: lint.error!.message,
+            statusLine: lint.error!.line,
+            statusCol: lint.error!.col,
+          };
         }
         break;
       }
@@ -119,22 +125,22 @@ export default function App() {
         const lintResult = lintJSON(input);
         if (lintResult.valid) {
           const parsed = JSON.parse(input);
-          setOutput(JSON.stringify(parsed));
+          patch = { ...CLEARED, output: JSON.stringify(parsed) };
         } else {
           const result = minifyJS(input);
-          if (result.error) {
-            setOutput('');
-            setError(result.error);
-          } else {
-            setOutput(result.output);
-          }
+          patch = result.error
+            ? { ...CLEARED, output: '', status: 'error', statusMsg: result.error }
+            : { ...CLEARED, output: result.output };
         }
         break;
       }
     }
-  }, [input, indent]);
+
+    patchActive(patch);
+  }, [activeTab, indent, patchActive]);
 
   const handleCopy = async () => {
+    const output = activeTab.output;
     if (!output) return;
     try {
       await navigator.clipboard.writeText(output);
@@ -152,6 +158,30 @@ export default function App() {
     }
   };
 
+  const addTab = () => {
+    const tab = makeTab(nextNum.current++);
+    setTabs(ts => [...ts, tab]);
+    setActiveId(tab.id);
+  };
+
+  const closeTab = (id: string) => {
+    const idx = tabs.findIndex(t => t.id === id);
+    if (tabs.length === 1) {
+      // Closing the last tab resets it to a fresh empty document.
+      const fresh = makeTab(nextNum.current++);
+      setTabs([fresh]);
+      setActiveId(fresh.id);
+      return;
+    }
+    const next = tabs.filter(t => t.id !== id);
+    setTabs(next);
+    if (id === activeId) setActiveId(next[Math.min(idx, next.length - 1)].id);
+  };
+
+  const renameTab = (id: string, title: string) => {
+    setTabs(ts => ts.map(t => (t.id === id ? { ...t, title: title || t.title } : t)));
+  };
+
   return (
     <div className="app">
       <Toolbar
@@ -162,12 +192,22 @@ export default function App() {
         onToggleDark={() => setDarkMode(d => !d)}
       />
 
+      <TabBar
+        tabs={tabs}
+        activeId={activeId}
+        onSelect={setActiveId}
+        onNew={addTab}
+        onClose={closeTab}
+        onRename={renameTab}
+      />
+
       <main className="panels">
         <CodeEditor
+          key={`in-${activeId}`}
           label="Input"
           editable
-          value={input}
-          onChange={val => { setInput(val); clearStatus(); }}
+          value={activeTab.input}
+          onChange={val => patchActive({ input: val, ...CLEARED })}
           onCreateEditor={view => { inputViewRef.current = view; }}
           placeholder={`Paste your JS object or JSON here…\n\n// Example JS object:\n{\n    ok: 200,\n    bad_request: 400,  // HTTP status\n    unauthorised: 401,\n    internal_server_error: 500\n}`}
         />
@@ -175,14 +215,15 @@ export default function App() {
         <div className="panel-divider" />
 
         <CodeEditor
+          key={`out-${activeId}`}
           label="Output"
-          value={output}
+          value={activeTab.output}
           placeholder="Output will appear here…"
           action={
             <button
               className={`copy-btn${copied ? ' copied' : ''}`}
               onClick={handleCopy}
-              disabled={!output}
+              disabled={!activeTab.output}
             >
               {copied ? 'Copied!' : 'Copy'}
             </button>
@@ -191,10 +232,10 @@ export default function App() {
       </main>
 
       <StatusBar
-        status={status}
-        message={statusMsg}
-        line={statusLine}
-        col={statusCol}
+        status={activeTab.status}
+        message={activeTab.statusMsg}
+        line={activeTab.statusLine}
+        col={activeTab.statusCol}
       />
     </div>
   );
