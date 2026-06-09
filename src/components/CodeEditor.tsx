@@ -30,7 +30,10 @@ const theme = EditorView.theme({
   '&.cm-focused': { outline: 'none' },
   '.cm-scroller': { fontFamily: 'var(--mono)', lineHeight: '1.65', overflow: 'auto' },
   '.cm-content': { padding: '12px 0' },
-  '.cm-gutters': { backgroundColor: 'transparent', color: 'var(--text-muted)', border: 'none' },
+  // Opaque so the sticky gutter hides content scrolling underneath it (not transparent,
+  // which let line numbers and code overlap during horizontal scroll). The read-only
+  // Output panel overrides this background in App.css to match its muted panel color.
+  '.cm-gutters': { backgroundColor: 'var(--bg-panel)', color: 'var(--text-muted)', border: 'none' },
   '.cm-foldGutter .cm-gutterElement': { cursor: 'pointer', color: 'var(--text-muted)' },
   '.cm-foldPlaceholder': {
     backgroundColor: 'transparent',

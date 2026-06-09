@@ -273,14 +273,17 @@
   height: 100%;
 }
 
-/* Read-only Output panel gets the muted background. */
+/* Read-only Output panel gets the muted background. The gutter is included so its
+   opaque background matches the panel during horizontal scroll. */
 .editor-panel-readonly .editor-cm,
-.editor-panel-readonly .editor-cm .cm-editor {
+.editor-panel-readonly .editor-cm .cm-editor,
+.editor-panel-readonly .editor-cm .cm-gutters {
   background: color-mix(in srgb, var(--bg) 70%, var(--bg-panel));
 }
 
 [data-theme='dark'] .editor-panel-readonly .editor-cm,
-[data-theme='dark'] .editor-panel-readonly .editor-cm .cm-editor {
+[data-theme='dark'] .editor-panel-readonly .editor-cm .cm-editor,
+[data-theme='dark'] .editor-panel-readonly .editor-cm .cm-gutters {
   background: #111827;
 }
 
