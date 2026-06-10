@@ -1,14 +1,76 @@
 import React, { useMemo } from 'react';
 import CodeMirror from '@uiw/react-codemirror';
 import { json } from '@codemirror/lang-json';
+import { Prec, type Text } from '@codemirror/state';
 import {
   lineNumbers,
   keymap,
   EditorView,
   placeholder as cmPlaceholder,
 } from '@codemirror/view';
-import { foldGutter } from '@codemirror/language';
+import { foldGutter, foldService } from '@codemirror/language';
 import { search, searchKeymap } from '@codemirror/search';
+
+// CodeMirror's built-in JSON folding is driven by the Lezer parse tree, but for
+// large documents the parser only parses a prefix (lazy/viewport parsing). The
+// outer containers span past that parse frontier, so the tree-based fold service
+// reports them as unfoldable — that's why big top-level objects/arrays show no
+// fold arrow while small nested ones do.
+//
+// This bracket-matching fold service is parse-independent: it folds any container
+// regardless of document size. Like the other hand-written scanners in src/lib, it
+// copies string contents verbatim (tracking quotes + escapes) so that braces and
+// brackets inside string values are never mistaken for structure.
+
+// Stream forward from the opening bracket at `openPos` to its matching close,
+// skipping over string literals. Returns the index of the matching bracket, or -1.
+function findMatchingBracket(doc: Text, openPos: number): number {
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  let pos = openPos;
+  for (const chunk of doc.iterRange(openPos, doc.length)) {
+    for (let i = 0; i < chunk.length; i++, pos++) {
+      const c = chunk[i];
+      if (inString) {
+        if (escaped) escaped = false;
+        else if (c === '\\') escaped = true;
+        else if (c === '"') inString = false;
+        continue;
+      }
+      if (c === '"') inString = true;
+      else if (c === '{' || c === '[') depth++;
+      else if (c === '}' || c === ']') {
+        if (--depth === 0) return pos;
+      }
+    }
+  }
+  return -1;
+}
+
+const bracketFoldService = foldService.of((state, lineStart, lineEnd) => {
+  const { doc } = state;
+  const lineText = doc.sliceString(lineStart, lineEnd);
+  let inString = false;
+  let escaped = false;
+  // Find the first opening bracket on this line whose match lands on a later line.
+  for (let i = 0; i < lineText.length; i++) {
+    const c = lineText[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (c === '\\') escaped = true;
+      else if (c === '"') inString = false;
+      continue;
+    }
+    if (c === '"') {
+      inString = true;
+    } else if (c === '{' || c === '[') {
+      const closePos = findMatchingBracket(doc, lineStart + i);
+      if (closePos > lineEnd) return { from: lineStart + i + 1, to: closePos };
+    }
+  }
+  return null;
+});
 
 interface CodeEditorProps {
   value: string;
@@ -24,7 +86,7 @@ interface CodeEditorProps {
 
 // Single-color theme that follows the app's light/dark CSS variables.
 // No syntaxHighlighting is added, so JSON tokens render in one color while
-// folding still works (folding uses json()'s parse tree, not the highlight style).
+// folding still works (folding uses bracketFoldService above, not the highlight style).
 const theme = EditorView.theme({
   '&': { color: 'var(--text)', height: '100%', fontSize: '13.5px' },
   '&.cm-focused': { outline: 'none' },
@@ -85,6 +147,9 @@ export default function CodeEditor({
     () => [
       lineNumbers(),
       foldGutter(),
+      // High precedence so it's consulted before json()'s parse-tree fold, which
+      // fails on the outer containers of large documents (see bracketFoldService).
+      Prec.high(bracketFoldService),
       json(),
       search({ top: true }),
       keymap.of(searchKeymap),
