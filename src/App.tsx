@@ -49,13 +49,21 @@ export default function App() {
     } catch { return true; }
   });
   const [copied, setCopied] = useState(false);
-  const inputViewRef = useRef<EditorView | null>(null);
+  // One EditorView per tab per panel, kept alive for the life of the tab. Because
+  // every tab's editors stay mounted (only the active pair is visible), CodeMirror
+  // preserves each tab's own scroll + fold state natively across tab switches.
+  const inputViews = useRef<Map<string, EditorView>>(new Map());
+  const outputViews = useRef<Map<string, EditorView>>(new Map());
 
   const activeTab = tabs.find(t => t.id === activeId) ?? tabs[0];
 
-  const patchActive = useCallback((patch: Partial<TabState>) => {
-    setTabs(ts => ts.map(t => (t.id === activeId ? { ...t, ...patch } : t)));
-  }, [activeId]);
+  const patchTab = useCallback((id: string, patch: Partial<TabState>) => {
+    setTabs(ts => ts.map(t => (t.id === id ? { ...t, ...patch } : t)));
+  }, []);
+  const patchActive = useCallback(
+    (patch: Partial<TabState>) => patchTab(activeId, patch),
+    [patchTab, activeId],
+  );
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
@@ -72,7 +80,7 @@ export default function App() {
       if (!isFind) return;
       const active = document.activeElement;
       if (active && active.closest('.cm-editor')) return; // an editor is focused — let CodeMirror handle it
-      const view = inputViewRef.current;
+      const view = inputViews.current.get(activeId);
       if (!view) return;
       e.preventDefault();
       view.focus();
@@ -80,7 +88,15 @@ export default function App() {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
+  }, [activeId]);
+
+  // Editors that mounted (or sat) while hidden never measured their layout, so on
+  // reveal they can paint with a stale viewport/scrollbar and the wrong scroll
+  // offset. Nudge the newly-active tab's editors to re-measure on switch.
+  useEffect(() => {
+    inputViews.current.get(activeId)?.requestMeasure();
+    outputViews.current.get(activeId)?.requestMeasure();
+  }, [activeId]);
 
   const handleAction = useCallback((action: Action) => {
     const input = activeTab.input;
@@ -165,6 +181,9 @@ export default function App() {
   };
 
   const closeTab = (id: string) => {
+    // The tab's editors unmount; drop their views so the maps don't keep stale refs.
+    inputViews.current.delete(id);
+    outputViews.current.delete(id);
     const idx = tabs.findIndex(t => t.id === id);
     if (tabs.length === 1) {
       // Closing the last tab resets it to a fresh empty document.
@@ -201,34 +220,39 @@ export default function App() {
         onRename={renameTab}
       />
 
-      <main className="panels">
-        <CodeEditor
-          key={`in-${activeId}`}
-          label="Input"
-          editable
-          value={activeTab.input}
-          onChange={val => patchActive({ input: val, ...CLEARED })}
-          onCreateEditor={view => { inputViewRef.current = view; }}
-          placeholder={`Paste your JS object or JSON here…\n\n// Example JS object:\n{\n    ok: 200,\n    bad_request: 400,  // HTTP status\n    unauthorised: 401,\n    internal_server_error: 500\n}`}
-        />
+      <main className="panels-stack">
+        {tabs.map(tab => (
+          <div className="panels" key={tab.id} hidden={tab.id !== activeId}>
+            <CodeEditor
+              label="Input"
+              editable
+              value={tab.input}
+              onChange={val => patchTab(tab.id, { input: val, ...CLEARED })}
+              onCreateEditor={view => { inputViews.current.set(tab.id, view); }}
+              placeholder={`Paste your JS object or JSON here…\n\n// Example JS object:\n{\n    ok: 200,\n    bad_request: 400,  // HTTP status\n    unauthorised: 401,\n    internal_server_error: 500\n}`}
+            />
 
-        <div className="panel-divider" />
+            <div className="panel-divider" />
 
-        <CodeEditor
-          key={`out-${activeId}`}
-          label="Output"
-          value={activeTab.output}
-          placeholder="Output will appear here…"
-          action={
-            <button
-              className={`copy-btn${copied ? ' copied' : ''}`}
-              onClick={handleCopy}
-              disabled={!activeTab.output}
-            >
-              {copied ? 'Copied!' : 'Copy'}
-            </button>
-          }
-        />
+            <CodeEditor
+              label="Output"
+              value={tab.output}
+              onCreateEditor={view => { outputViews.current.set(tab.id, view); }}
+              placeholder="Output will appear here…"
+              action={
+                tab.id === activeId ? (
+                  <button
+                    className={`copy-btn${copied ? ' copied' : ''}`}
+                    onClick={handleCopy}
+                    disabled={!tab.output}
+                  >
+                    {copied ? 'Copied!' : 'Copy'}
+                  </button>
+                ) : undefined
+              }
+            />
+          </div>
+        ))}
       </main>
 
       <StatusBar

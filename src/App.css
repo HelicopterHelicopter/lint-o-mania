@@ -208,11 +208,25 @@
 }
 
 /* ── Panels ──────────────────────────────────────────── */
+/* Every tab renders its own .panels row; only the active one is visible. The
+   inactive rows stay mounted (hidden) so each keeps its editors' scroll + fold
+   state. The attribute selector outranks .panels { display: flex } so `hidden`
+   actually hides them. */
+.panels-stack {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
 .panels {
   display: flex;
   flex: 1;
   overflow: hidden;
   gap: 0;
+}
+
+.panels[hidden] {
+  display: none;
 }
 
 .panel-divider {
