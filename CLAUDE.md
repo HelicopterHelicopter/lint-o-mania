@@ -4,10 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
-- `npm run dev` — start the Vite dev server with HMR
-- `npm run build` — type-check (`tsc -b`) then production build (`vite build`)
-- `npm run lint` — run ESLint over the repo
-- `npm run preview` — serve the production build locally
+- `bun run dev` — start the Vite dev server with HMR
+- `bun run build` — type-check (`tsc -b`) then production build (`vite build`)
+- `bun run lint` — run ESLint over the repo
+- `bun run preview` — serve the production build locally
 
 There is no test framework installed; there are no tests to run.
 
