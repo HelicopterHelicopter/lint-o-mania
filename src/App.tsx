@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { EditorView } from '@codemirror/view';
 import { openSearchPanel } from '@codemirror/search';
+import { Analytics } from '@vercel/analytics/react';
 import Toolbar, { type Action } from './components/Toolbar';
 import TabBar from './components/TabBar';
 import CodeEditor from './components/CodeEditor';
@@ -203,6 +204,7 @@ export default function App() {
 
   return (
     <div className="app">
+      <Analytics />
       <Toolbar
         onAction={handleAction}
         indent={indent}
